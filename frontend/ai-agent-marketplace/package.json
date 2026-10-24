@@ -19,7 +19,6 @@
     "zustand": "^4.4.0",
     "@tanstack/react-query": "^5.0.0",
     "axios": "^1.6.0",
-    "ipfs-http-client": "^60.0.0",
     "clsx": "^2.0.0",
     "tailwind-merge": "^2.0.0",
     "lucide-react": "^0.294.0",
