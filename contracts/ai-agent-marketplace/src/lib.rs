@@ -743,6 +743,48 @@ impl AiAgentMarketplace {
         Ok(bid_id)
     }
 
+    /// Withdraw a pending bid (agent only)
+    pub fn withdraw_bid(
+        env: Env,
+        agent_owner: Address,
+        job_id: u64,
+        bid_id: u64,
+    ) -> Result<(), Error> {
+        agent_owner.require_auth();
+        Self::ensure_not_paused(&env)?;
+
+        let job = Self::get_job(&env, job_id)?;
+        if job.status != JobStatus::Open {
+            return Err(Error::JobNotOpen);
+        }
+
+        let mut bid = Self::get_bid(&env, bid_id)?;
+        if bid.agent != agent_owner {
+            return Err(Error::Unauthorized);
+        }
+        if bid.status != BidStatus::Pending {
+            return Err(Error::BidNotPending);
+        }
+
+        // Verify bid belongs to this job
+        let job_bids: Vec<u64> = env.storage().instance()
+            .get(&DataKey::BidsByJob(job_id))
+            .unwrap_or(Vec::new(&env));
+        if !job_bids.contains(&bid_id) {
+            return Err(Error::BidNotFound);
+        }
+
+        bid.status = BidStatus::Withdrawn;
+        env.storage().instance().set(&DataKey::Bid(bid_id), &bid);
+
+        env.events().publish(
+            (symbol_short!("bid_withdraw"),),
+            (bid_id, job_id, agent_owner),
+        );
+
+        Ok(())
+    }
+
     /// Accept a bid and create escrow
     pub fn accept_bid(
         env: Env,
