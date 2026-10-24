@@ -107,7 +107,6 @@ pub enum EscrowStatus {
     Released,
     Disputed,
     Refunded,
-    Resolved,
 }
 
 #[contracttype]
