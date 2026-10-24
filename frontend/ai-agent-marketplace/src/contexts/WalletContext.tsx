@@ -115,8 +115,8 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const signTransaction = async (xdr: string, opts?: any): Promise<string> => {
-    const signed = await freighter.signTransaction(xdr, opts);
-    return signed;
+    const result = await freighter.signTransaction(xdr, opts);
+    return result.signedTxXdr;
   };
 
   const signAuthEntry = async (xdr: string, address: string, networkPassphrase: string): Promise<string> => {
