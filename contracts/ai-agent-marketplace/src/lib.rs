@@ -616,6 +616,30 @@ impl AiAgentMarketplace {
         Ok(job_id)
     }
 
+    /// Cancel an open job (client only)
+    pub fn cancel_job(env: Env, client: Address, job_id: u64) -> Result<(), Error> {
+        client.require_auth();
+        Self::ensure_not_paused(&env)?;
+
+        let mut job = Self::get_job(&env, job_id)?;
+        if job.client != client {
+            return Err(Error::Unauthorized);
+        }
+        if job.status != JobStatus::Open {
+            return Err(Error::JobNotOpen);
+        }
+
+        job.status = JobStatus::Cancelled;
+        env.storage().instance().set(&DataKey::Job(job_id), &job);
+
+        env.events().publish(
+            (symbol_short!("job_cancel"),),
+            (job_id, client),
+        );
+
+        Ok(())
+    }
+
     /// Place a bid on a job
     pub fn place_bid(
         env: Env,
