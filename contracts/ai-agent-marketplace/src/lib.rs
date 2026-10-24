@@ -916,7 +916,6 @@ impl AiAgentMarketplace {
         let mut agent = Self::get_agent(&env, agent_id)?;
         agent.total_jobs_completed += 1;
         agent.total_earnings += escrow.amount;
-        agent.reputation = agent.reputation.saturating_add(5); // +5 reputation per completion
         env.storage().instance().set(&DataKey::Agent(agent_id), &agent);
 
         // Update job
@@ -1194,16 +1193,21 @@ impl AiAgentMarketplace {
         reviewee_reviews.push_back(review_id);
         env.storage().instance().set(&DataKey::ReviewsByReviewee(reviewee.clone()), &reviewee_reviews);
 
-        // Update agent reputation if reviewing agent
-        if job.assigned_agent == Some(reviewer.clone()) {
-            // Client reviewing agent
+        // Update agent reputation when the client reviews the agent
+        if job.client == reviewer {
             let agent_id: u64 = env.storage().instance()
                 .get(&DataKey::AgentByOwner(reviewee.clone()))
                 .ok_or(Error::AgentNotFound)?;
             let mut agent = Self::get_agent(&env, agent_id)?;
-            // Weighted reputation update
-            let total_reviews = reviewee_reviews.len() as u32;
-            agent.reputation = ((agent.reputation * (total_reviews - 1)) + rating) / total_reviews.max(1);
+            // Reputation is a 0-100 rolling average of review ratings (1-5).
+            let prior_reviews = reviewee_reviews.len().saturating_sub(1) as u32;
+            let rating_score = rating * 20;
+            let new_reputation = if prior_reviews == 0 {
+                rating_score
+            } else {
+                (agent.reputation * prior_reviews + rating_score) / (prior_reviews + 1)
+            };
+            agent.reputation = new_reputation;
             env.storage().instance().set(&DataKey::Agent(agent_id), &agent);
         }
 
