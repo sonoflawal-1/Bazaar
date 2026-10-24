@@ -128,6 +128,19 @@ export const StellarProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return (simResult as any).result?.retval ?? null;
   }, [contract, rpc, config]);
 
+  const getContractClient = useCallback(() => {
+    if (!isConnected || !contract || !rpc || !config) return null;
+    return {
+      getAgent: (agentId: number) => invokeContract('get_agent', u64ToScVal(agentId)),
+      getJob: (jobId: number) => invokeContract('get_job', u64ToScVal(jobId)),
+      getConfig: () => invokeContract('get_config'),
+      getPlatformStats: () => invokeContract('get_platform_stats'),
+      getAgentsBySkill: (skill: string) => invokeContract('get_agents_by_skill', stringToScVal(skill)),
+      getJobsByClient: (client: string) => invokeContract('get_jobs_by_client', addressToScVal(client)),
+      getJobsByAgent: (agent: string) => invokeContract('get_jobs_by_agent', addressToScVal(agent)),
+    };
+  }, [isConnected, contract, rpc, config, invokeContract]);
+
   useEffect(() => {
     const saved = localStorage.getItem('stellar-contract-config');
     if (saved) {
@@ -152,7 +165,7 @@ export const StellarProvider: React.FC<{ children: React.ReactNode }> = ({ child
       sendTransaction,
       getContractData,
       invokeContract,
-      getContractClient: () => null,
+      getContractClient,
     }}>
       {children}
     </StellarContext.Provider>
