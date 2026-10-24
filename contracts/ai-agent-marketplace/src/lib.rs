@@ -335,6 +335,7 @@ impl AiAgentMarketplace {
             total_disputes: 0,
             avg_job_completion_time: 0,
         };
+        env.storage().instance().set(&DataKey::PlatformStats, &stats);
         env.storage().instance().set(&DataKey::IsPaused, &false);
 
         // Emit initialization event
