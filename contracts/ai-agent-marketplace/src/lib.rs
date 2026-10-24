@@ -271,6 +271,7 @@ pub enum Error {
     EscrowAlreadyRefunded = 49,
     InvalidDisputeEvidence = 50,
     ContractPaused = 51,
+    EscrowNotExpired = 52,
 }
 
 #[contract]
@@ -1196,6 +1197,48 @@ impl AiAgentMarketplace {
         env.events().publish(
             (symbol_short!("dispute_res"),),
             (dispute_id, resolver, resolution),
+        );
+
+        Ok(())
+    }
+
+    /// Refund an escrow that has passed its expiry window (callable by anyone)
+    pub fn refund_expired_escrow(env: Env, job_id: u64) -> Result<(), Error> {
+        let config = Self::get_config(&env)?;
+
+        let escrow_id: u64 = env.storage().instance()
+            .get(&DataKey::EscrowByJob(job_id))
+            .ok_or(Error::EscrowNotFound)?;
+        let mut escrow = Self::get_escrow(&env, escrow_id)?;
+
+        if escrow.status != EscrowStatus::Funded {
+            return Err(Error::EscrowNotFunded);
+        }
+
+        let now = env.ledger().timestamp();
+        let expiry = escrow.created_at + (config.escrow_expiry_days * 86400);
+        if now <= expiry {
+            return Err(Error::EscrowNotExpired);
+        }
+
+        let usdc_client = TokenClient::new(&env, &config.usdc_token);
+        usdc_client.transfer(
+            &env.current_contract_address(),
+            &escrow.client,
+            &escrow.amount,
+        );
+
+        escrow.status = EscrowStatus::Refunded;
+        escrow.released_at = Some(now);
+        env.storage().instance().set(&DataKey::Escrow(escrow_id), &escrow);
+
+        let mut job = Self::get_job(&env, job_id)?;
+        job.status = JobStatus::Refunded;
+        env.storage().instance().set(&DataKey::Job(job_id), &job);
+
+        env.events().publish(
+            (symbol_short!("escrow_refund"),),
+            (job_id, escrow.client),
         );
 
         Ok(())
