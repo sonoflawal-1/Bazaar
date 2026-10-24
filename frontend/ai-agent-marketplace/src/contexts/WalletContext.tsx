@@ -1,7 +1,24 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import * as freighter from '@stellar/freighter-api';
+import { Horizon } from '@stellar/stellar-sdk';
 
 export type NetworkType = string;
+
+const getHorizonUrl = (network: string | null) =>
+  network === 'PUBLIC'
+    ? 'https://horizon.stellar.org'
+    : 'https://horizon-testnet.stellar.org';
+
+const fetchBalance = async (publicKey: string, network: string | null): Promise<string> => {
+  try {
+    const server = new Horizon.Server(getHorizonUrl(network));
+    const account = await server.loadAccount(publicKey);
+    const native = account.balances.find((b) => b.asset_type === 'native');
+    return native?.balance ?? '0';
+  } catch {
+    return '0';
+  }
+};
 
 interface WalletState {
   publicKey: string | null;
@@ -71,9 +88,11 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setState((prev) => ({ ...prev, isConnecting: true }));
     try {
       const publicKey = await freighter.getPublicKey();
+      const balance = await fetchBalance(publicKey, state.network);
       setState((prev) => ({
         ...prev,
         publicKey,
+        balance,
         isConnected: true,
         isConnecting: false,
       }));
@@ -112,7 +131,12 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setState((prev) => ({ ...prev, network: net }));
   };
 
-  const refreshBalance = async () => {};
+  const refreshBalance = async () => {
+    if (!state.publicKey) return;
+    setState((prev) => ({ ...prev, isLoading: true }));
+    const balance = await fetchBalance(state.publicKey, state.network);
+    setState((prev) => ({ ...prev, balance, isLoading: false }));
+  };
 
   return (
     <WalletContext.Provider
