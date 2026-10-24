@@ -379,6 +379,7 @@ impl AiAgentMarketplace {
         metadata_uri: String,
     ) -> Result<u64, Error> {
         owner.require_auth();
+        Self::ensure_not_paused(&env)?;
 
         let config = Self::get_config(&env)?;
         if price_per_task < config.min_job_budget {
@@ -448,6 +449,7 @@ impl AiAgentMarketplace {
         metadata_uri: Option<String>,
     ) -> Result<(), Error> {
         owner.require_auth();
+        Self::ensure_not_paused(&env)?;
 
         let mut agent = Self::get_agent(&env, agent_id)?;
         if agent.owner != owner {
@@ -494,6 +496,7 @@ impl AiAgentMarketplace {
         expires_at: u64,
     ) -> Result<(), Error> {
         verifier.require_auth();
+        Self::ensure_not_paused(&env)?;
 
         let config = Self::get_config(&env)?;
         if !config.skill_verifiers.contains(&verifier) {
@@ -555,6 +558,7 @@ impl AiAgentMarketplace {
         deadline_days: u64,
     ) -> Result<u64, Error> {
         client.require_auth();
+        Self::ensure_not_paused(&env)?;
 
         let config = Self::get_config(&env)?;
         
@@ -620,6 +624,7 @@ impl AiAgentMarketplace {
         proposal: String,
     ) -> Result<u64, Error> {
         agent_owner.require_auth();
+        Self::ensure_not_paused(&env)?;
 
         let config = Self::get_config(&env)?;
         let job = Self::get_job(&env, job_id)?;
@@ -720,6 +725,7 @@ impl AiAgentMarketplace {
         bid_id: u64,
     ) -> Result<(), Error> {
         client.require_auth();
+        Self::ensure_not_paused(&env)?;
 
         let config = Self::get_config(&env)?;
         let mut job = Self::get_job(&env, job_id)?;
@@ -829,6 +835,7 @@ impl AiAgentMarketplace {
         deliverable_hash: BytesN<32>,
     ) -> Result<(), Error> {
         agent.require_auth();
+        Self::ensure_not_paused(&env)?;
 
         let mut job = Self::get_job(&env, job_id)?;
 
@@ -860,6 +867,7 @@ impl AiAgentMarketplace {
         job_id: u64,
     ) -> Result<(), Error> {
         client.require_auth();
+        Self::ensure_not_paused(&env)?;
 
         let config = Self::get_config(&env)?;
         let mut job = Self::get_job(&env, job_id)?;
@@ -936,6 +944,7 @@ impl AiAgentMarketplace {
         evidence_uri: String,
     ) -> Result<u64, Error> {
         raiser.require_auth();
+        Self::ensure_not_paused(&env)?;
 
         let config = Self::get_config(&env)?;
         let mut job = Self::get_job(&env, job_id)?;
@@ -1124,6 +1133,7 @@ impl AiAgentMarketplace {
         comment: String,
     ) -> Result<(), Error> {
         reviewer.require_auth();
+        Self::ensure_not_paused(&env)?;
 
         let job = Self::get_job(&env, job_id)?;
 
@@ -1406,6 +1416,14 @@ impl AiAgentMarketplace {
         env.storage().instance()
             .get(&DataKey::Config)
             .ok_or(Error::NotInitialized)
+    }
+
+    fn ensure_not_paused(env: &Env) -> Result<(), Error> {
+        let paused: bool = env.storage().instance().get(&DataKey::IsPaused).unwrap_or(false);
+        if paused {
+            return Err(Error::ContractPaused);
+        }
+        Ok(())
     }
 
     fn get_agent(env: &Env, agent_id: u64) -> Result<Agent, Error> {
