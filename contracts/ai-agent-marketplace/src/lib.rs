@@ -183,6 +183,7 @@ pub enum DataKey {
     ReviewCounter,
     DisputeCounter,
     EscrowCounter,
+    VerificationCounter,
     Agent(u64),
     AgentByOwner(Address),
     Job(u64),
@@ -326,6 +327,7 @@ impl AiAgentMarketplace {
         env.storage().instance().set(&DataKey::ReviewCounter, &0u64);
         env.storage().instance().set(&DataKey::DisputeCounter, &0u64);
         env.storage().instance().set(&DataKey::EscrowCounter, &0u64);
+        env.storage().instance().set(&DataKey::VerificationCounter, &0u64);
 
         let stats = PlatformStats {
             total_agents: 0,
@@ -1523,8 +1525,12 @@ impl AiAgentMarketplace {
     }
 
     fn next_verification_id(env: &Env) -> Result<u64, Error> {
-        // Use escrow counter for verification IDs too
-        Self::next_escrow_id(env)
+        let id: u64 = env.storage().instance()
+            .get(&DataKey::VerificationCounter)
+            .unwrap_or(0);
+        let new_id = id + 1;
+        env.storage().instance().set(&DataKey::VerificationCounter, &new_id);
+        Ok(new_id)
     }
 }
     use super::*;
