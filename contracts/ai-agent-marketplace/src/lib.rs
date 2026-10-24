@@ -1061,23 +1061,34 @@ impl AiAgentMarketplace {
 
         let usdc_client = TokenClient::new(&env, &config.usdc_token);
 
+        // Deduct the (higher) dispute fee from the escrow payout.
+        let dispute_fee = (escrow.amount * config.platform_fee_bps_dispute as i128) / 10000;
+        let payout = escrow.amount - dispute_fee;
+        if dispute_fee > 0 {
+            usdc_client.transfer(
+                &env.current_contract_address(),
+                &config.platform_fee_recipient,
+                &dispute_fee,
+            );
+        }
+
         match resolution.as_str() {
             "agent" => {
-                // Full payment to agent
+                // Full payment to agent (minus dispute fee)
                 usdc_client.transfer(
                     &env.current_contract_address(),
                     &escrow.agent,
-                    &escrow.amount,
+                    &payout,
                 );
                 escrow.status = EscrowStatus::Released;
                 job.status = JobStatus::Completed;
             }
             "client" => {
-                // Full refund to client
+                // Full refund to client (minus dispute fee)
                 usdc_client.transfer(
                     &env.current_contract_address(),
                     &escrow.client,
-                    &escrow.amount,
+                    &payout,
                 );
                 escrow.status = EscrowStatus::Refunded;
                 job.status = JobStatus::Refunded;
@@ -1087,8 +1098,8 @@ impl AiAgentMarketplace {
                 if percentage > 100 {
                     return Err(Error::InvalidConfig);
                 }
-                let agent_amount = (escrow.amount * percentage as i128) / 100;
-                let client_amount = escrow.amount - agent_amount;
+                let agent_amount = (payout * percentage as i128) / 100;
+                let client_amount = payout - agent_amount;
 
                 usdc_client.transfer(
                     &env.current_contract_address(),
