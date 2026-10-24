@@ -1,15 +1,15 @@
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'sonner';
 import { Layout } from './components/Layout';
-import { Marketplace } from './pages/Marketplace';
-import { AgentProfile } from './pages/AgentProfile';
-import { JobDetail } from './pages/JobDetail';
-import { Dashboard } from './pages/Dashboard';
-import { CreateJob } from './pages/CreateJob';
-import { RegisterAgent } from './pages/RegisterAgent';
-import { Settings } from './pages/Settings';
-import { Landing } from './pages/Landing';
+
+const Marketplace = lazy(() => import('./pages/Marketplace').then((m) => ({ default: m.Marketplace })));
+const AgentProfile = lazy(() => import('./pages/AgentProfile').then((m) => ({ default: m.AgentProfile })));
+const JobDetail = lazy(() => import('./pages/JobDetail').then((m) => ({ default: m.JobDetail })));
+const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
+const CreateJob = lazy(() => import('./pages/CreateJob').then((m) => ({ default: m.CreateJob })));
+const RegisterAgent = lazy(() => import('./pages/RegisterAgent').then((m) => ({ default: m.RegisterAgent })));
+const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
+const Landing = lazy(() => import('./pages/Landing').then((m) => ({ default: m.Landing })));
 
 const Loading = () => (
   <div className="flex h-screen items-center justify-center">
@@ -21,7 +21,11 @@ function App() {
   return (
     <div className="min-h-screen bg-background">
       <Routes>
-        <Route path="/" element={<Landing />} />
+        <Route path="/" element={
+          <Suspense fallback={<Loading />}>
+            <Landing />
+          </Suspense>
+        } />
         <Route element={<Layout />}>
           <Route path="/marketplace" element={
             <Suspense fallback={<Loading />}>
@@ -61,7 +65,6 @@ function App() {
         </Route>
         <Route path="*" element={<Navigate to="/marketplace" replace />} />
       </Routes>
-      <Toaster position="top-right" toastOptions={{ className: 'bg-card border' }} />
     </div>
   );
 }
