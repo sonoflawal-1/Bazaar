@@ -962,8 +962,9 @@ impl AiAgentMarketplace {
             return Err(Error::AlreadyDisputed);
         }
 
-        // Check dispute window
-        let dispute_deadline = job.created_at + (config.dispute_window_days * 86400);
+        // Check dispute window (measured from completion, falling back to creation)
+        let window_start = job.completed_at.unwrap_or(job.created_at);
+        let dispute_deadline = window_start + (config.dispute_window_days * 86400);
         if env.ledger().timestamp() > dispute_deadline {
             return Err(Error::DisputeWindowExpired);
         }
@@ -1106,7 +1107,6 @@ impl AiAgentMarketplace {
         }
 
         escrow.resolver = Some(resolver.clone());
-        escrow.status = EscrowStatus::Resolved;
         escrow.released_at = Some(env.ledger().timestamp());
         env.storage().instance().set(&DataKey::Escrow(escrow_id), &escrow);
 
